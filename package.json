@@ -1,0 +1,67 @@
+{
+  "name": "tomsun-line",
+  "version": "1.0.0",
+  "description": "A universal line connector plugin for dragging connections between lists",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "line-connector",
+    "drag-connect",
+    "svg",
+    "react",
+    "vue",
+    "typescript"
+  ],
+  "author": "tomsun",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.0.0",
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.8",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "rollup": "^3.0.0",
+    "rollup-plugin-dts": "^5.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    },
+    "./adapters/React": {
+      "types": "./dist/adapters/React/index.d.ts",
+      "import": "./dist/adapters/React/index.esm.js",
+      "require": "./dist/adapters/React/index.js"
+    },
+    "./adapters/Vue": {
+      "types": "./dist/adapters/Vue/index.d.ts",
+      "import": "./dist/adapters/Vue/index.esm.js",
+      "require": "./dist/adapters/Vue/index.js"
+    }
+  }
+}

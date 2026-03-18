@@ -15,7 +15,6 @@
 - 支持双向连接（左→右 或 右→左）
 - 自动在节点边缘添加连接点
 - 点击模式时显示连接状态图标（+ 和 ✓）
-- 支持隐藏实线，连接后显示自定义连接点状态
 - TypeScript 类型支持
 - 响应式设计，自动适应窗口大小变化
 
@@ -193,17 +192,15 @@ interface Connection {
 
 配置选项
 
-| 选项                | 类型           | 默认值    | 描述                                               |
-| ------------------- | -------------- | --------- | -------------------------------------------------- |
-| lineColor           | string         | '#1890ff' | 线条颜色                                           |
-| lineWidth           | number         | 2         | 线条宽度                                           |
-| lineStyle           | LineStyle      | Bezier    | 连线样式（Straight/Bezier）                        |
-| curvature           | number         | 0.5       | 贝塞尔曲线曲率 (0-1)                               |
-| connectionMode      | ConnectionMode | Drag      | 连接模式（Drag/Click）                             |
-| showLine            | boolean        | true      | 是否显示连接线（false 时隐藏实线，显示连接点状态） |
-| connectedIcon       | string         | '✓'       | 连接完成后的连接点图标（showLine 为 false 时生效） |
-| onConnectionAdded   | function       | -         | 连接添加时的回调                                   |
-| onConnectionRemoved | function       | -         | 连接删除时的回调                                   |
+| 选项                | 类型           | 默认值    | 描述                        |
+| ------------------- | -------------- | --------- | --------------------------- |
+| lineColor           | string         | '#1890ff' | 线条颜色                    |
+| lineWidth           | number         | 2         | 线条宽度                    |
+| lineStyle           | LineStyle      | Bezier    | 连线样式（Straight/Bezier） |
+| curvature           | number         | 0.5       | 贝塞尔曲线曲率 (0-1)        |
+| connectionMode      | ConnectionMode | Drag      | 连接模式（Drag/Click）      |
+| onConnectionAdded   | function       | -         | 连接添加时的回调            |
+| onConnectionRemoved | function       | -         | 连接删除时的回调            |
 
 ### LineStyle
 

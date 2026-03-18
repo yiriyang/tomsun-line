@@ -23,7 +23,9 @@ const App: React.FC = () => {
 
   const [connections, setConnections] = useState<Connection[]>([]);
   const [lineStyle, setLineStyle] = useState<LineStyle>(LineStyle.Bezier);
-  const [connectionMode, setConnectionMode] = useState<ConnectionMode>(ConnectionMode.Drag);
+
+  // 连接模式，默认拖拽模式 drag 拖拽连接，点击模式 click 点击连接
+  const connectionMode: ConnectionMode = ConnectionMode.Drag;
 
   const handleConnectionAdded = (connection: Connection) => {
     setConnections(prev => [...prev, connection]);
@@ -55,12 +57,6 @@ const App: React.FC = () => {
     );
   };
 
-  const toggleConnectionMode = () => {
-    const newMode = connectionMode === ConnectionMode.Drag ? ConnectionMode.Click : ConnectionMode.Drag;
-    setConnectionMode(newMode);
-    connectorRef.current?.setConnectionMode(newMode);
-  };
-
   const getNodeLabel = (nodeId: string): string => {
     const leftNode = leftNodes.find(n => n.id === nodeId);
     if (leftNode) return leftNode.label;
@@ -72,15 +68,14 @@ const App: React.FC = () => {
     <div className="app">
       <div className="header">
         <h1>TomSun Line - React Demo</h1>
-        <p>{connectionMode === ConnectionMode.Drag 
-          ? '拖拽节点右侧的圆点连接到另一侧的节点' 
-          : '点击节点连接点，先点击左侧再点击右侧来创建连接'}</p>
+        <p>
+          {connectionMode === ConnectionMode.Drag
+            ? '当前模式：拖拽模式 - 拖拽节点右侧的圆点连接到另一侧的节点'
+            : '当前模式：点击模式 - 点击节点连接点，先点击左侧再点击右侧来创建连接'}
+        </p>
       </div>
 
       <div className="controls">
-        <button className="control-btn" onClick={toggleConnectionMode}>
-          切换连接模式: {connectionMode === ConnectionMode.Drag ? '拖拽模式' : '点击模式'}
-        </button>
         <button className="control-btn" onClick={toggleLineStyle}>
           切换线条样式: {lineStyle === LineStyle.Bezier ? '贝塞尔曲线' : '直线'}
         </button>

@@ -76,14 +76,6 @@ const LineConnector = {
       { deep: true },
     );
 
-    watch(
-      combinedOptions,
-      (newOptions) => {
-        connector.value?.updateOptions(newOptions);
-      },
-      { deep: true },
-    );
-
     return {
       containerRef,
       setLeftNodes: (nodes: Node[]) => connector.value?.setLeftNodes(nodes),

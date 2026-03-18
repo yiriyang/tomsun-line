@@ -6,11 +6,28 @@ import {
   ConnectionMode,
 } from "./types";
 
+const HANDLE_STYLES = {
+  position: "absolute",
+  width: "12px",
+  height: "12px",
+  background: "#1890ff",
+  borderRadius: "50%",
+  zIndex: "1001",
+  top: "50%",
+  transform: "translateY(-50%)",
+};
+
+const mergeOptions = (options: LineOptions = {}): Required<LineOptions> => ({
+  ...DEFAULT_OPTIONS,
+  ...options,
+});
+
 export class DraggableManager {
   private options: Required<LineOptions>;
   private leftNodes = new Map<string, NodePosition>();
   private rightNodes = new Map<string, NodePosition>();
   private connections = new Map<string, Connection>();
+  private connectedNodes = new Set<string>();
 
   private isDraggingLine = false;
   private dragStartNodeId: string | null = null;
@@ -45,7 +62,7 @@ export class DraggableManager {
       icon: "default" | "plus" | "connected",
     ) => void,
   ) {
-    this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.options = mergeOptions(options);
     this.drawTempLine = tempLineHandlers.draw;
     this.updateTempLine = tempLineHandlers.update;
     this.removeTempLine = tempLineHandlers.remove;
@@ -60,6 +77,10 @@ export class DraggableManager {
     document.addEventListener("mouseup", this.handleMouseUp);
   }
 
+  private findNode(nodeId: string): NodePosition | undefined {
+    return this.leftNodes.get(nodeId) ?? this.rightNodes.get(nodeId);
+  }
+
   private initNodeDrag(nodePosition: NodePosition): void {
     const { element, side } = nodePosition;
 
@@ -69,19 +90,11 @@ export class DraggableManager {
     handle.className = "line-drag-handle";
 
     const isLeft = side === "left";
-    Object.assign(handle.style, {
-      position: "absolute",
-      width: "12px",
-      height: "12px",
-      background: "#1890ff",
-      borderRadius: "50%",
+    Object.assign(handle.style, HANDLE_STYLES, {
       cursor:
         this.options.connectionMode === ConnectionMode.Click
           ? "pointer"
           : "crosshair",
-      zIndex: "1001",
-      top: "50%",
-      transform: "translateY(-50%)",
       [isLeft ? "right" : "left"]: "-6px",
     });
 
@@ -105,13 +118,10 @@ export class DraggableManager {
 
   private startLineDrag(
     nodeId: string,
-    side: "left" | "right",
+    _side: "left" | "right",
     event: MouseEvent,
   ): void {
-    const node =
-      side === "left"
-        ? this.leftNodes.get(nodeId)
-        : this.rightNodes.get(nodeId);
+    const node = this.findNode(nodeId);
     if (node) {
       this.isDraggingLine = true;
       this.dragStartNodeId = nodeId;
@@ -133,10 +143,7 @@ export class DraggableManager {
       this.clickStartSide = side;
       if (this.updateNodeIcon) this.updateNodeIcon(nodeId, "plus");
 
-      const node =
-        side === "left"
-          ? this.leftNodes.get(nodeId)
-          : this.rightNodes.get(nodeId);
+      const node = this.findNode(nodeId);
       if (node) this.drawTempLine(nodeId, event.clientX, event.clientY);
     } else {
       if (this.clickStartNodeId === nodeId) {
@@ -171,9 +178,7 @@ export class DraggableManager {
   }
 
   private checkNodeConnected(nodeId: string): boolean {
-    return Array.from(this.connections.values()).some(
-      (conn) => conn.fromNodeId === nodeId || conn.toNodeId === nodeId,
-    );
+    return this.connectedNodes.has(nodeId);
   }
 
   private handleMouseMove(event: MouseEvent): void {
@@ -217,6 +222,13 @@ export class DraggableManager {
 
     const connection: Connection = { fromNodeId, toNodeId };
     this.connections.set(connectionId, connection);
+    this.connectedNodes.add(fromNodeId);
+    this.connectedNodes.add(toNodeId);
+
+    if (this.updateNodeIcon) {
+      this.updateNodeIcon(fromNodeId, "connected");
+      this.updateNodeIcon(toNodeId, "connected");
+    }
 
     if (this.onAddConnection) this.onAddConnection(connection);
   }
@@ -232,10 +244,15 @@ export class DraggableManager {
   }
 
   addConnection(connection: Connection): void {
-    this.connections.set(
-      `${connection.fromNodeId}-${connection.toNodeId}`,
-      connection,
-    );
+    const connectionId = `${connection.fromNodeId}-${connection.toNodeId}`;
+    this.connections.set(connectionId, connection);
+    this.connectedNodes.add(connection.fromNodeId);
+    this.connectedNodes.add(connection.toNodeId);
+
+    if (this.updateNodeIcon) {
+      this.updateNodeIcon(connection.fromNodeId, "connected");
+      this.updateNodeIcon(connection.toNodeId, "connected");
+    }
   }
 
   removeConnection(connection: Connection): void {
@@ -243,12 +260,39 @@ export class DraggableManager {
 
     if (this.connections.has(connectionId)) {
       this.connections.delete(connectionId);
+      this.connectedNodes.delete(connection.fromNodeId);
+      this.connectedNodes.delete(connection.toNodeId);
+
+      if (this.updateNodeIcon) {
+        const fromNodeStillConnected = Array.from(
+          this.connections.values(),
+        ).some(
+          (conn) =>
+            conn.fromNodeId === connection.fromNodeId ||
+            conn.toNodeId === connection.fromNodeId,
+        );
+        const toNodeStillConnected = Array.from(this.connections.values()).some(
+          (conn) =>
+            conn.fromNodeId === connection.toNodeId ||
+            conn.toNodeId === connection.toNodeId,
+        );
+
+        if (!fromNodeStillConnected) {
+          this.updateNodeIcon(connection.fromNodeId, "default");
+        }
+        if (!toNodeStillConnected) {
+          this.updateNodeIcon(connection.toNodeId, "default");
+        }
+      }
+
       if (this.onRemoveConnection) this.onRemoveConnection(connection);
     }
   }
 
   clearConnections(): void {
     this.connections.clear();
+    this.connectedNodes.clear();
+    this.resetNodeIcons();
   }
 
   getConnections(): Connection[] {
@@ -256,11 +300,15 @@ export class DraggableManager {
   }
 
   updateOptions(options: Partial<LineOptions>): void {
+    const oldConnectionMode = this.options.connectionMode;
     this.options = { ...this.options, ...options };
     this.onRemoveConnection =
       options.onConnectionRemoved || this.onRemoveConnection;
 
-    if (options.connectionMode !== undefined) {
+    if (
+      options.connectionMode !== undefined &&
+      options.connectionMode !== oldConnectionMode
+    ) {
       const cursor =
         options.connectionMode === ConnectionMode.Click
           ? "pointer"

@@ -7,6 +7,34 @@ import {
   LineData,
 } from "./types";
 
+const ICON_STYLES = {
+  container: {
+    position: "absolute",
+    width: "20px",
+    height: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "white",
+    border: "2px solid #1890ff",
+    borderRadius: "50%",
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#1890ff",
+    zIndex: "1002",
+    top: "50%",
+    transform: "translateY(-50%)",
+  },
+  plus: {
+    background: "white",
+    color: "#1890ff",
+  },
+  connected: {
+    background: "#1890ff",
+    color: "white",
+  },
+};
+
 export class LineCanvas {
   private svg: SVGSVGElement;
   private lines = new Map<string, LineData>();
@@ -14,6 +42,7 @@ export class LineCanvas {
   private leftNodes = new Map<string, NodePosition>();
   private rightNodes = new Map<string, NodePosition>();
   private tempLine: SVGPathElement | null = null;
+  private tempLineStart: { x: number; y: number } | null = null;
   private nodeIcons = new Map<string, HTMLElement>();
 
   constructor(container: HTMLElement, options: Partial<LineOptions> = {}) {
@@ -31,7 +60,6 @@ export class LineCanvas {
     });
 
     container.appendChild(this.svg);
-    window.addEventListener("resize", this.handleResize);
   }
 
   updateLeftNodes(nodes: Map<string, NodePosition>): void {
@@ -44,6 +72,10 @@ export class LineCanvas {
     this.redrawAllLines();
   }
 
+  private findNode(nodeId: string): NodePosition | undefined {
+    return this.leftNodes.get(nodeId) ?? this.rightNodes.get(nodeId);
+  }
+
   drawLine(connection: Connection): void {
     const { fromNodeId, toNodeId } = connection;
     const lineId = `${fromNodeId}-${toNodeId}`;
@@ -53,22 +85,15 @@ export class LineCanvas {
       return;
     }
 
-    const fromNode =
-      this.leftNodes.get(fromNodeId) || this.rightNodes.get(fromNodeId);
-    const toNode =
-      this.leftNodes.get(toNodeId) || this.rightNodes.get(toNodeId);
+    const fromNode = this.findNode(fromNodeId);
+    const toNode = this.findNode(toNodeId);
 
     if (!fromNode || !toNode) return;
 
-    const fromRect = fromNode.element.getBoundingClientRect();
-    const toRect = toNode.element.getBoundingClientRect();
-    const svgRect = this.svg.getBoundingClientRect();
-
     const { startX, startY, endX, endY } = this.calculateLinePositions(
       fromNode.side,
-      fromRect,
-      toRect,
-      svgRect,
+      fromNode.element,
+      toNode.element,
     );
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -77,10 +102,6 @@ export class LineCanvas {
     path.setAttribute("fill", "none");
     path.setAttribute("cursor", "pointer");
     path.style.pointerEvents = "stroke";
-
-    if (!this.options.showLine) {
-      path.setAttribute("opacity", "0");
-    }
 
     path.setAttribute("d", this.calculatePath(startX, startY, endX, endY));
     this.svg.appendChild(path);
@@ -92,19 +113,17 @@ export class LineCanvas {
       fromSide: fromNode.side,
       element: path,
     });
-
-    if (!this.options.showLine) {
-      this.updateNodeIcon(fromNodeId, "connected");
-      this.updateNodeIcon(toNodeId, "connected");
-    }
   }
 
   private calculateLinePositions(
     fromSide: "left" | "right",
-    fromRect: DOMRect,
-    toRect: DOMRect,
-    svgRect: DOMRect,
+    fromElement: HTMLElement,
+    toElement: HTMLElement,
   ): { startX: number; startY: number; endX: number; endY: number } {
+    const fromRect = fromElement.getBoundingClientRect();
+    const toRect = toElement.getBoundingClientRect();
+    const svgRect = this.svg.getBoundingClientRect();
+
     const startX =
       fromSide === "left"
         ? fromRect.right - svgRect.left
@@ -133,22 +152,15 @@ export class LineCanvas {
 
     if (!lineData) return;
 
-    const fromNode =
-      this.leftNodes.get(fromNodeId) || this.rightNodes.get(fromNodeId);
-    const toNode =
-      this.leftNodes.get(toNodeId) || this.rightNodes.get(toNodeId);
+    const fromNode = this.findNode(fromNodeId);
+    const toNode = this.findNode(toNodeId);
 
     if (!fromNode || !toNode) return;
 
-    const fromRect = fromNode.element.getBoundingClientRect();
-    const toRect = toNode.element.getBoundingClientRect();
-    const svgRect = this.svg.getBoundingClientRect();
-
     const { startX, startY, endX, endY } = this.calculateLinePositions(
       lineData.fromSide,
-      fromRect,
-      toRect,
-      svgRect,
+      fromNode.element,
+      toNode.element,
     );
 
     lineData.element.setAttribute(
@@ -166,11 +178,6 @@ export class LineCanvas {
       this.svg.removeChild(lineData.element);
       this.lines.delete(lineId);
     }
-
-    if (!this.options.showLine) {
-      this.updateNodeIcon(fromNodeId, "default");
-      this.updateNodeIcon(toNodeId, "default");
-    }
   }
 
   clearLines(): void {
@@ -178,21 +185,12 @@ export class LineCanvas {
       this.svg.removeChild(lineData.element);
     });
     this.lines.clear();
-
-    if (!this.options.showLine) {
-      this.nodeIcons.forEach((iconElement) => {
-        if (iconElement.parentNode)
-          iconElement.parentNode.removeChild(iconElement);
-      });
-      this.nodeIcons.clear();
-    }
   }
 
   drawTempLine(startNodeId: string, clientX: number, clientY: number): void {
     this.removeTempLine();
 
-    const startNode =
-      this.leftNodes.get(startNodeId) || this.rightNodes.get(startNodeId);
+    const startNode = this.findNode(startNodeId);
     if (!startNode) return;
 
     const startRect = startNode.element.getBoundingClientRect();
@@ -203,6 +201,8 @@ export class LineCanvas {
         ? startRect.right - svgRect.left
         : startRect.left - svgRect.left;
     const startY = startRect.top + startRect.height / 2 - svgRect.top;
+
+    this.tempLineStart = { x: startX, y: startY };
 
     this.tempLine = document.createElementNS(
       "http://www.w3.org/2000/svg",
@@ -227,36 +227,30 @@ export class LineCanvas {
   }
 
   updateTempLine(clientX: number, clientY: number): void {
-    if (!this.tempLine) return;
+    if (!this.tempLine || !this.tempLineStart) return;
 
     const svgRect = this.svg.getBoundingClientRect();
-    const d = this.tempLine.getAttribute("d") || "";
-    const match = d.match(/^M\s+([\d.]+),([\d.]+)/);
-
-    if (match) {
-      const startX = parseFloat(match[1]);
-      const startY = parseFloat(match[2]);
-      this.tempLine.setAttribute(
-        "d",
-        this.calculatePath(
-          startX,
-          startY,
-          clientX - svgRect.left,
-          clientY - svgRect.top,
-        ),
-      );
-    }
+    this.tempLine.setAttribute(
+      "d",
+      this.calculatePath(
+        this.tempLineStart.x,
+        this.tempLineStart.y,
+        clientX - svgRect.left,
+        clientY - svgRect.top,
+      ),
+    );
   }
 
   removeTempLine(): void {
     if (this.tempLine) {
       this.svg.removeChild(this.tempLine);
       this.tempLine = null;
+      this.tempLineStart = null;
     }
   }
 
   updateNodeIcon(nodeId: string, icon: "default" | "plus" | "connected"): void {
-    const node = this.leftNodes.get(nodeId) || this.rightNodes.get(nodeId);
+    const node = this.findNode(nodeId);
     if (!node) return;
 
     if (icon === "default") {
@@ -272,24 +266,8 @@ export class LineCanvas {
     if (!iconElement) {
       iconElement = document.createElement("div");
       iconElement.className = "line-node-icon";
-      Object.assign(iconElement.style, {
-        position: "absolute",
-        width: "20px",
-        height: "20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "white",
-        border: "2px solid #1890ff",
-        borderRadius: "50%",
-        fontSize: "14px",
-        fontWeight: "bold",
-        color: "#1890ff",
-        zIndex: "1002",
-        top: "50%",
-        transform: "translateY(-50%)",
-        [node.side === "left" ? "right" : "left"]: "-10px",
-      });
+      Object.assign(iconElement.style, ICON_STYLES.container);
+      iconElement.style[node.side === "left" ? "right" : "left"] = "-10px";
       node.element.style.position = "relative";
       node.element.appendChild(iconElement);
       this.nodeIcons.set(nodeId, iconElement);
@@ -297,12 +275,10 @@ export class LineCanvas {
 
     if (icon === "plus") {
       iconElement.textContent = "+";
-      iconElement.style.background = "white";
-      iconElement.style.color = "#1890ff";
+      Object.assign(iconElement.style, ICON_STYLES.plus);
     } else if (icon === "connected") {
-      iconElement.textContent = this.options.connectedIcon;
-      iconElement.style.background = "#1890ff";
-      iconElement.style.color = "white";
+      iconElement.textContent = "✓";
+      Object.assign(iconElement.style, ICON_STYLES.connected);
     }
   }
 
@@ -330,10 +306,6 @@ export class LineCanvas {
       });
     });
   }
-
-  private handleResize = (): void => {
-    this.redrawAllLines();
-  };
 
   updateOptions(options: Partial<LineOptions>): void {
     this.options = { ...this.options, ...options };
@@ -368,7 +340,5 @@ export class LineCanvas {
     this.nodeIcons.clear();
 
     if (this.svg.parentNode) this.svg.parentNode.removeChild(this.svg);
-
-    window.removeEventListener("resize", this.handleResize);
   }
 }

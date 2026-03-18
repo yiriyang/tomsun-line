@@ -12,7 +12,13 @@
     "strict": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "tomsun-line": ["../../src/index.ts"],
+      "tomsun-line/adapters/Vue": ["../../src/adapters/Vue/index.ts"],
+      "tomsun-line/adapters/React": ["../../src/adapters/React/index.ts"]
+    }
   },
   "include": ["src"]
 }

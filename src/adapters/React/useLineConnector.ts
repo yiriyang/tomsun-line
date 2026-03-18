@@ -26,12 +26,6 @@ export function useLineConnector(
     }
   }, [])
 
-  useEffect(() => {
-    if (connectorRef.current) {
-      connectorRef.current.updateOptions(options)
-    }
-  }, [options])
-
   const setLeftNodes = (nodes: Node[]) => {
     connectorRef.current?.setLeftNodes(nodes)
   }

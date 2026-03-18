@@ -3,15 +3,14 @@
     <div class="header">
       <h1>TomSun Line - Vue Demo</h1>
       <p v-if="connectionMode === 'drag'">
-        拖拽节点右侧的圆点连接到另一侧的节点
+        当前模式：拖拽模式 - 拖拽节点右侧的圆点连接到另一侧的节点
       </p>
-      <p v-else>点击节点连接点，先点击左侧再点击右侧来创建连接</p>
+      <p v-else>
+        当前模式：点击模式 - 点击节点连接点，先点击左侧再点击右侧来创建连接
+      </p>
     </div>
 
     <div class="controls">
-      <button class="control-btn" @click="toggleConnectionMode">
-        切换连接模式: {{ modeText }}
-      </button>
       <button class="control-btn" @click="toggleLineStyle">
         切换线条样式: {{ lineStyle === "bezier" ? "贝塞尔曲线" : "直线" }}
       </button>
@@ -80,11 +79,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import LineConnector from "tomsun-line/adapters/Vue";
-import type { Node, Connection, LineStyle, ConnectionMode } from "tomsun-line";
+import { Node, Connection, LineStyle, ConnectionMode } from "tomsun-line";
 
-const lineConnectorRef = ref<InstanceType<typeof LineConnector> | null>(null);
-const lineStyle = ref<LineStyle>("bezier");
-const connectionMode = ref<ConnectionMode>("drag");
+const lineConnectorRef = ref<any>(null);
+const lineStyle = ref<LineStyle>(LineStyle.Bezier);
+
+// 连接模式，默认拖拽模式 drag 拖拽连接，点击模式 click 点击连接
+const connectionMode: ConnectionMode = ConnectionMode.Drag;
 
 const leftNodes = ref<Node[]>([
   { id: "1", label: "用户登录" },
@@ -102,10 +103,6 @@ const rightNodes = ref<Node[]>([
 
 const connections = ref<Connection[]>([]);
 
-const modeText = computed(() => {
-  return connectionMode.value === "drag" ? "拖拽模式" : "点击模式";
-});
-
 const handleConnectionAdded = (conn: Connection) => {
   console.log("连接添加:", conn);
   connections.value.push(conn);
@@ -122,6 +119,7 @@ const handleConnectionRemoved = (conn: Connection) => {
 };
 
 const removeConnection = (conn: Connection) => {
+  console.log("删除连接:", conn);
   lineConnectorRef.value?.removeConnection(conn);
 };
 
@@ -131,12 +129,10 @@ const clearConnections = () => {
 };
 
 const toggleLineStyle = () => {
-  lineStyle.value = lineStyle.value === "bezier" ? "straight" : "bezier";
-};
-
-const toggleConnectionMode = () => {
-  connectionMode.value = connectionMode.value === "drag" ? "click" : "drag";
-  lineConnectorRef.value?.setConnectionMode(connectionMode.value);
+  lineStyle.value =
+    lineStyle.value === LineStyle.Bezier
+      ? LineStyle.Straight
+      : LineStyle.Bezier;
 };
 
 const getNodeLabel = (nodeId: string): string => {
